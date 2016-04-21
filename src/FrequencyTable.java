@@ -14,6 +14,7 @@ public class FrequencyTable {
 	public void click(String key) {
 		int count = count(key);
 		st.put(key, count + 1);
+		//System.out.println("Click Key: "+key);
 		AllStrsFreq += count + 1;
 	}
 
@@ -28,22 +29,23 @@ public class FrequencyTable {
 	// print table to standard output
 	public void show() {
 		String format = "%-30s %-20s\n";
-		System.out.format(format, "Token", "After Split");
-		System.out.println("-----------------------------------------------");
+		System.out.format(format, "Key", "Count");
+		System.out.println("--------------------------------------");
 		for (String key : st) {
 			System.out.format(format, key, count(key));
 		}
 	}
 
-	public void createOutput(String filename, String path)
+	public void createOutput(String LocalORGlobal, String filename, String path)
 			throws IOException, RowsExceededException, WriteException, BiffException {
 		WritableWorkbook workbook = Workbook
-				.createWorkbook(new File(path+"/freqLocal_" + filename));
+				.createWorkbook(new File(path+"/"+LocalORGlobal+"_" + filename));
 		WritableSheet freqSheet = workbook.createSheet("freq_data", 0);
 		Label label;
 		Number number;
 		int i = 0;
 		for (String key : st) {
+			//System.out.println("Key: "+key);
 			label = new Label(0, i, key);
 			number = new Number(1, i, count(key));
 			freqSheet.addCell(label);

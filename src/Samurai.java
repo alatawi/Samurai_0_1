@@ -19,8 +19,11 @@ public class Samurai {
 	public static void run(String inPath, String outPath, String prefix_suffix) throws BiffException, IOException, RowsExceededException, WriteException{
 		buildGlobalFrequency(inPath);
 		cleanDirectory(outPath); 
+		freqGlobal.createOutput("GlobalFreq", "AllFiles.xls", outPath);
+		freqGlobal.show();
 		File folder = new File(inPath);
 		File[] listOfFiles = folder.listFiles();
+		System.out.println();
 		System.out.println("## Building local frequencies...");
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile()) {
@@ -35,11 +38,16 @@ public class Samurai {
 				for(int j = 0; j < sheet.getRows(); j++) {
 					E = sheet.getCell(4, j);
 					String[] strArray = conservativeSplitting(E.getContents());
-					for (int k = 1; k < strArray.length; k++) {// Start from 1 to avoid
+					for (int k = 0; k < strArray.length; k++) {// Start from 1 to avoid
 																// recording space
-						freqLocal.click(strArray[k].toLowerCase());
+						if(strArray[k].length()>1)
+							freqLocal.click(strArray[k].toLowerCase());
 					}
 				}
+				freqLocal.createOutput("LocalFreq", listOfFiles[i].getName(), outPath);
+				System.out.println();
+				System.out.println("## local frequencies for the file ("+listOfFiles[i].getName()+"):");
+				freqLocal.show();
 				//2: Creating output file to store spited tokens.
 				String outputFile = outPath+"/Out-"+listOfFiles[i].getName();
 				WritableWorkbook workbook = Workbook.createWorkbook(new File(outputFile));
@@ -51,14 +59,23 @@ public class Samurai {
 
 				
 				//2: Calling mixedCaseSplit algorithm.
+				System.out.println();
+				System.out.println("## Tokens spliting output ("+listOfFiles[i].getName()+")");
+				String format = "%-30s %-30s\n";
+				System.out.format(format, "Before", "After");
+				System.out.println("--------------------------------------");
 				for(int j = 0; j < sheet.getRows(); j++) {
 					E = sheet.getCell(4, j);
 					String actualToken = E.getContents();
-					String splitedToken = mixedCaseSplit(actualToken, freqLocal, prefix_suffix);
-					Label label3 = new Label(0, j+1, actualToken); 
-					newSheet.addCell(label3);
-					Label label4 = new Label(1, j+1, splitedToken); 
-					newSheet.addCell(label4);
+					if(actualToken.length()>1){
+						String splitedToken = mixedCaseSplit(actualToken, freqLocal, prefix_suffix);
+						Label label3 = new Label(0, j+1, actualToken); 
+						newSheet.addCell(label3);
+						Label label4 = new Label(1, j+1, splitedToken); 
+						newSheet.addCell(label4);
+						System.out.format(format, actualToken, splitedToken);
+					}
+					
 				}
 				workbook.write();
 				workbook.close();
@@ -69,6 +86,7 @@ public class Samurai {
 		}
 			
 	}
+	
 	private static Sheet readFromEXL(String filename) throws BiffException, IOException{
 		Workbook workbook = Workbook.getWorkbook(new File(filename));
 		Sheet sheet = workbook.getSheet(0);
@@ -87,7 +105,7 @@ public class Samurai {
 				for(int j = 0; j < sheet.getRows(); j++) {
 					E = sheet.getCell(4, j);
 					String[] strArray = conservativeSplitting(E.getContents());
-					for (int k = 1; k < strArray.length; k++) {// Start from 1 to avoid
+					for (int k = 0; k < strArray.length; k++) {// Start from 1 to avoid
 																// recording space
 						freqGlobal.click(strArray[k].toLowerCase());
 					}
@@ -117,57 +135,77 @@ public class Samurai {
 		return splittedToken;
 	}
 	
-
+	
 	private static String mixedCaseSplit(String token, FrequencyTable freqLocal, String prefix_suffix) throws FileNotFoundException {
 		token = splitOnSpecialCharsAndDigits(token);
 		token = splitOnLowercaseToUppercase(token);
+		String[] tokenArray = token.split("\\s+");
+		String newToken = "";
+		for(String s:tokenArray){
+			newToken += s + " ";
+		}
+		token = newToken.substring(0, newToken.length()-1);
+		//System.out.println("token: "+token);
 		String sToken = "";
-		String[] s = token.split("\\s+");
+		tokenArray = token.split("\\s+");
 		double altScore=0, camelScore=0;
-		int n=0;
+		int n=0, ith=0;
 		//for all space-delimited substrings s in token do
-		for (int i = 0; i < s.length; i++){
-			for(int j = 0; j < s[i].length(); j++){
-				//if any: isUpper(s[i]) ^ isLower(s[i + 1]) then
-				if(Character.isUpperCase(s[i].charAt(j)) && Character.isUpperCase(s[j+1].charAt(0))){
-					n = s[i].length()-1;
-				
-				// compute score for camelcase split
-				if(j>0)
-					camelScore = score(s[i].substring(j, n), freqLocal);
-				else 
-					camelScore = score(s[i].substring(0, n), freqLocal);
-				
-				// compute score for alternate split
-				//altScore   score(s[i + 1; n])
-				altScore = score(s[i].substring((j+1), n), freqLocal);
-				
-				// select split based on score
-				if(camelScore > java.lang.Math.sqrt(altScore)){
-					if(j>0)
-						s[i] = s[i].substring(0, j-1)+" "+ s[i].substring(j, n);
-				}else
-					s[i] = s[i].substring(0, j)+" "+ s[i].substring(j+1, n);
-				}
-				
-			}//end if
-			sToken += " " + s[i];
-			
-		}//end for
-	
-		token = sToken;
-		s = token.split("\\s+");
+		//System.out.println("token: "+token);
+		for(String s:tokenArray){
+				char[] charArray = s.toCharArray();
+				//System.out.println("s: "+s);
+				for(int i=0; i<charArray.length; i++){
+					//System.out.println("charArray[i]: "+charArray[i]);
+					//System.out.println("charArray[i+1]: "+charArray[i+1]);
+					if(Character.isUpperCase(charArray[i]) && Character.isLowerCase(charArray[i+1])){
+					//ith = forAnyIthUpperAndLower(s, 0);
+					//while(ith != -1){
+						//int i = ith;
+						n = s.length()-1;
+						// compute score for camelcase split
+						if(i>0)
+							camelScore = score(s.substring(i, n), freqLocal);
+						else 
+							camelScore = score(s.substring(0, n), freqLocal);
+						
+						// compute score for alternate split
+						//altScore   score(s[i + 1; n])
+						altScore = score(s.substring(i+1, n), freqLocal);
+						
+						// select split based on score
+						if(camelScore > java.lang.Math.sqrt(altScore)){
+							if(i>0)
+								s = s.substring(0, i-1)+" "+ s.substring(i, n);
+						}else
+							s = s.substring(0, i)+" "+ s.substring(i+1, n);
+						//ith = forAnyIthUpperAndLower(s, i);
+					}
+					}
+				sToken += " " + s;
+			}//end for
+		//System.out.println("sToken: "+sToken);
+		token = sToken.substring(1, sToken.length());
 		sToken = "";
 		// for all space-delimited substrings s in token do
-		for (int i = 0; i < s.length; i++){
-			sToken += "" + sameCaseSplit(s[i], freqLocal, score(s[i], freqLocal), prefix_suffix);
+		tokenArray = token.split("\\s+");
+		for(String s:tokenArray){
+			sToken = sToken + " " + sameCaseSplit(s, freqLocal, score(s, freqLocal), prefix_suffix);
 		}
+		sToken = sToken.substring(1, sToken.length());
 		return sToken;
+		}
+	private static int forAnyIthUpperAndLower(String s, int ith){
+		char[] charArray = s.toCharArray();
+		for(int i=ith; i<charArray.length-1; i++){
+			if(Character.isUpperCase(charArray[i]) && Character.isLowerCase(charArray[i+1]))
+				return i;
+		}
+		return -1;
 	}
-	
 	private static String sameCaseSplit(String s, FrequencyTable freqLocal, double score_ns, String prefix_suffix) throws FileNotFoundException {
 		String splitS = s;
-		int n = s.length(), i=0;
+		int n = s.length()-1, i=0;
 		double maxScore = -1, score_l, score_r;
 		boolean prefix, toSplit_l, toSplit_r;
 		while(i<n){

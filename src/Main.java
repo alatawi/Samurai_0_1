@@ -14,6 +14,7 @@ public class Main {
 		listFiles(inPath);
 		new Samurai();
 		Samurai.run(inPath, outPath, prefix_suffix);
+		System.out.println();
 		System.out.println("Done.");
 	}
 	private static void listFiles(String inPath){
@@ -25,5 +26,6 @@ public class Main {
 				System.out.println(i+1+" - "+listOfFiles[i].getName());
 			}
 		}
+		System.out.println();
 	}
 }
